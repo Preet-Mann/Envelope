@@ -1,5 +1,4 @@
 import math
-import random
 import ROOT
 
 
@@ -7,7 +6,7 @@ import ROOT
 class EventSimulator:
 
     # Variable Dictionary
-    # Additional particles can be added here, changing the vertex and momentum constraints can be done here
+    # Additional particles can be added here, and changing the vertex and momentum constraints can be done here
     def __init__(self, output_file, n_events=10000):
         self.output_file = output_file
         self.n_events = n_events
@@ -40,8 +39,8 @@ class EventSimulator:
             p = self.rng.Gaus(6.5, 1.0)
             if self.min_mom <= p <= self.max_mom:
                 break
-        theta = random.uniform(0, math.pi)
-        phi = random.uniform(0, 2 * math.pi)
+        theta = self.rng.Uniform(0, math.pi)
+        phi = self.rng.Uniform(0, 2 * math.pi)
         px = p * math.sin(theta) * math.cos(phi)
         py = p * math.sin(theta) * math.sin(phi)
         pz = p * math.cos(theta)
@@ -51,26 +50,26 @@ class EventSimulator:
     def generate_vertex(self):
         while True:
             vx = self.rng.Gaus(0, 50)
-            if -self.square_side / 2 <= vx <= self.square_side / 2:
-                break
-        while True:
             vy = self.rng.Gaus(0, 50)
-            if -self.square_side / 2 <= vy <= self.square_side / 2:
+            if (abs(vx) <= self.square_side / 2) and (abs(vy) <= self.square_side / 2):
                 break
         vz = 0.0
         return vx, vy, vz
 
     # Event details for hepmc output file
     def write_event(self, f, event_id, px, py, pz, E, vx, vy, vz, pdg_id):
-        f.write(f"E {event_id} 0 0 0 0 0\n")
-        f.write("F GenEvent 3 0\n")
-        f.write("F Units 0 0\n")
-        f.write("F MomentumUnit GEV\n")
-        f.write("F LengthUnit MM\n")
-        f.write(f"F GenParticle 1 1 {pdg_id} 1 0 0 0 0 {px:.6f} {py:.6f} {pz:.6f} {E:.6f}\n")
-        f.write(f"F GenVertex 1 -1 -1 -1 {vx:.3f} {vy:.3f} {vz:.3f} 0.0\n")
-        f.write("F GenParticle 1\n")
-        f.write("F GenVertex 1\n")
+         event_str = (
+             f"E {event_id} 0 0 0 0 0\n"
+             "F GenEvent 3 0\n"
+             "F Units 0 0\n"
+             "F MomentumUnit GEV\n"
+             "F LengthUnit MM\n"
+             f"F GenParticle 1 1 {pdg_id} 1 0 0 0 0 {px:.6f} {py:.6f} {pz:.6f} {E:.6f}\n"
+             f"F GenVertex 1 -1 -1 -1 {vx:.3f} {vy:.3f} {vz:.3f} 0.0\n"
+             "F GenParticle 1\n"
+             "F GenVertex 1\n"
+          )
+         f.write(event_str)
 
     # Writes out events to HepMc file
     def generate_events(self):
@@ -79,8 +78,7 @@ class EventSimulator:
         pdg_id = particle["pdg_id"]
 
         with open(self.output_file, "w") as f:
-            f.write("HepMC::Version 3.0.0\n")
-            f.write("HepMC::IO_GenEvent-START_EVENT_LISTING\n")
+            f.write("HepMC::Version 3.0.0\nHepMC::IO_GenEvent-START_EVENT_LISTING\n")
             for event_id in range(self.n_events):
                 px, py, pz, p_mag = self.generate_momentum()
                 vx, vy, vz = self.generate_vertex()
@@ -146,9 +144,10 @@ class PlotManager:
 
             m_hist_name = f"hist_momentum_{ROOT.gRandom.Integer(100000)}"
             self.plotted_hist_momentum = self.hist_momentum_raw.Clone(m_hist_name)
+
             #plot styling
             from ROOT import gStyle
-            gStyle.SetOptFit(4)
+            gStyle.SetOptFit(0)
             gStyle.SetOptStat(0)
             self.plotted_hist_momentum.GetXaxis().CenterTitle()
             self.plotted_hist_momentum.GetYaxis().CenterTitle()
@@ -156,19 +155,22 @@ class PlotManager:
             self.plotted_hist_vertex.GetYaxis().CenterTitle()
             self.plotted_hist_vertex.GetYaxis().SetTitleOffset(0.9)
 
-
-       # Vertex canvas
+       # Vertex canvas + Fitting
             self.c_vertex.cd()
             self.c_vertex.Clear()
             self.plotted_hist_vertex.Draw("COLZ")
             if fit:
-                v_fit_name = f"fit2d_{ROOT.gRandom.Integer(100000)}" # This is for debugging purposes, without it the histogram loses its data when clicked on, attempts to call a plot that is no longer stored
+                v_fit_name = f"fit2d_{ROOT.gRandom.Integer(100000)}" # This is for debugging purposes, without it the histogram loses its data when clicked on, attempts to call a plot that is no longer stored. Removing it causes issues
                 self.fit_vertex = ROOT.TF2(v_fit_name, "[0]*exp(-0.5*((x/[1])**2 + (y/[2])**2))", -150, 150, -150, 150)
                 self.fit_vertex.SetParameters(1, 50, 50)
                 self.plotted_hist_vertex.Fit(self.fit_vertex, "RS")
+                chi2 = self.fit_vertex.GetChisquare()
+                ndf = self.fit_vertex.GetNDF()
+                reduced_chi2 = chi2 / ndf if ndf > 0 else float('inf')
+                print(f"Reduced χ² = {reduced_chi2:.3f}")
             self.c_vertex.Update()
 
-        # Momentum canvas
+        # Momentum canvas + Fitting
             self.c_momentum.cd()
             self.c_momentum.Clear()
             self.plotted_hist_momentum.Draw()
@@ -176,6 +178,9 @@ class PlotManager:
                 m_fit_name = f"fit1d_{ROOT.gRandom.Integer(100000)}" # Same debugging line
                 self.fit_momentum = ROOT.TF1(m_fit_name, "gaus", 0, 12)
                 self.plotted_hist_momentum.Fit(self.fit_momentum, "RS")
+                chi2 = self.fit_momentum.GetChisquare() #removable
+                ndf = self.fit_momentum.GetNDF() #removable
+                print(f"Reduced χ²/NDF = {chi2 / ndf:.3f}") #removable
             self.c_momentum.Update()
 
     # Allows user to view unfitted or fitted plots continuously
@@ -215,3 +220,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
