@@ -17,5 +17,34 @@ This project is a simulation and visualization tool for generating synthetic par
 
 ## Getting Started
 
-### Running the Program
-python3 particle_simulator.py
+## Running the Program
+```python3 particle_simulator.py```
+
+Options:
+1. Pion
+2. Kaon
+3. Proton
+
+Plot Options:
+1. Unfitted Distributions
+2. Fitted Distributions
+0. Exit
+
+
+## Output Format
+HEMP3 format
+
+```
+E 0 0 0 0 0 0
+F GenEvent 3 0
+F Units 0 0
+F MomentumUnit GEV
+F LengthUnit MM
+F GenParticle 1 1 211 1 0 0 0 0 px py pz E
+F GenVertex 1 -1 -1 -1 vx vy vz 0.0
+```
+
+## Visualizations
+- 2D Vertex Distribution (X vs Y in mm)
+- Momentum Magnitude Histogram (|p| in GeV)
+- Optional Gaussian/2D Gaussian fits with reduced χ² output
