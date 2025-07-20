@@ -17,10 +17,5 @@ This project is a simulation and visualization tool for generating synthetic par
 
 ## Getting Started
 
-### Installation
-
-Ensure ROOT is installed and Python bindings are accessible. You can test this in Python with:
-
-```python
-import ROOT
-
+### Running the Program
+python3 particle_simulator.py
