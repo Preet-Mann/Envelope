@@ -48,3 +48,6 @@ F GenVertex 1 -1 -1 -1 vx vy vz 0.0
 - 2D Vertex Distribution (X vs Y in mm)
 - Momentum Magnitude Histogram (|p| in GeV)
 - Optional Gaussian/2D Gaussian fits with reduced χ² output
+
+# Using the generated HEPMC files in the npsim:
+- 
