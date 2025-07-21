@@ -49,5 +49,9 @@ F GenVertex 1 -1 -1 -1 vx vy vz 0.0
 - Momentum Magnitude Histogram (|p| in GeV)
 - Optional Gaussian/2D Gaussian fits with reduced χ² output
 
+
 # Using the generated HEPMC files in the npsim:
-- 
+Loading the
+```source /opt/detector/epic-main/bin/thisepic.sh```
+
+```ddsim --compactFile $DETECTOR_PATH/$DETECTOR_CONFIG.xml --numberOfEvents 10 --inputFiles flat_particle_ascii.hepmc --outputFile envolope_sim_output.root```
