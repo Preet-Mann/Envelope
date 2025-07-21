@@ -51,7 +51,7 @@ F GenVertex 1 -1 -1 -1 vx vy vz 0.0
 
 
 # Using the generated HEPMC files in the npsim:
-Loading the
+- Loading the detector geomettry (we are using the default ePIC detector geometry file as an example)
 ```source /opt/detector/epic-main/bin/thisepic.sh```
-
+- Running the generated detector geometry file "flat_particle_ascii.hepmc" through DD4Hep.
 ```ddsim --compactFile $DETECTOR_PATH/$DETECTOR_CONFIG.xml --numberOfEvents 10 --inputFiles flat_particle_ascii.hepmc --outputFile envolope_sim_output.root```
