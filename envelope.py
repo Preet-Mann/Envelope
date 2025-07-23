@@ -1,6 +1,6 @@
 import math
 import ROOT
-
+import time #optional to make plots not appear behind terminal
 
 # --- Generation and Assignment ---
 class EventSimulator:
@@ -39,7 +39,7 @@ class EventSimulator:
             p = self.rng.Gaus(6.5, 1.0)
             if self.min_mom <= p <= self.max_mom:
                 break
-        theta = self.rng.Uniform(0, math.pi)
+        theta = self.rng.Uniform(0, 0.030) #30milliradians
         phi = self.rng.Uniform(0, 2 * math.pi)
         px = p * math.sin(theta) * math.cos(phi)
         py = p * math.sin(theta) * math.sin(phi)
@@ -128,62 +128,112 @@ class PlotManager:
                         except ValueError:
                             pass
 
-    # Create canvases for vertex and momentum plots
-    def create_canvases(self):
-        if not self.c_vertex:
-            self.c_vertex = ROOT.TCanvas("c_vertex", "Vertex Plot", 800, 600)
-        if not self.c_momentum:
-            self.c_momentum = ROOT.TCanvas("c_momentum", "Momentum Plot", 800, 600)
+    def create_canvases(self, vertex_canvas_name, momentum_canvas_name):
+        if self.c_vertex:
+            self.c_vertex.Close()
+            self.c_vertex = None
+        if self.c_momentum:
+            self.c_momentum.Close()
+            self.c_momentum = None
+
+        canvas_width = 800
+        canvas_height = 600
+        padding = 30
+        momentum_x_pos = 50
+        momentum_y_pos = 50
+        vertex_x_pos = momentum_x_pos
+        vertex_y_pos = momentum_y_pos + canvas_height + padding
+
+        self.c_momentum = ROOT.TCanvas(momentum_canvas_name, "Momentum Plot",
+                                       momentum_x_pos, momentum_y_pos,
+                                       canvas_width, canvas_height)
+
+        self.c_vertex = ROOT.TCanvas(vertex_canvas_name, "Vertex Plot",
+                                     vertex_x_pos, vertex_y_pos,
+                                     canvas_width, canvas_height)
 
 
     # Plots vertex and momentum histograms
     def plot_histograms(self, fit=False):
-            self.create_canvases()
-            v_hist_name = f"hist_vertex_{ROOT.gRandom.Integer(100000)}"
-            self.plotted_hist_vertex = self.hist_vertex_raw.Clone(v_hist_name)
 
-            m_hist_name = f"hist_momentum_{ROOT.gRandom.Integer(100000)}"
-            self.plotted_hist_momentum = self.hist_momentum_raw.Clone(m_hist_name)
+         if self.plotted_hist_vertex:
+             self.plotted_hist_vertex.Delete()
+             self.plotted_hist_vertex = None
+         if self.plotted_hist_momentum:
+             self.plotted_hist_momentum.Delete()
+             self.plotted_hist_momentum = None
+         if self.fit_vertex:
+             self.fit_vertex.Delete()
+             self.fit_vertex = None
+         if self.fit_momentum:
+             self.fit_momentum.Delete()
+             self.fit_momentum = None
+
+
+         vertex_canvas_name = f"c_vertex_{ROOT.gRandom.Integer(1000000)}"
+         momentum_canvas_name = f"c_momentum_{ROOT.gRandom.Integer(1000000)}"
+
+         self.create_canvases(vertex_canvas_name, momentum_canvas_name)
+
+
+         self.plotted_hist_vertex = self.hist_vertex_raw.Clone(f"vertex_clone_{ROOT.gRandom.Integer(1000000)}")
+         self.plotted_hist_momentum = self.hist_momentum_raw.Clone(f"momentum_clone_{ROOT.gRandom.Integer(1000000)}")
+
+
+
 
             #plot styling
-            from ROOT import gStyle
-            gStyle.SetOptFit(0)
-            gStyle.SetOptStat(0)
-            self.plotted_hist_momentum.GetXaxis().CenterTitle()
-            self.plotted_hist_momentum.GetYaxis().CenterTitle()
-            self.plotted_hist_vertex.GetXaxis().CenterTitle()
-            self.plotted_hist_vertex.GetYaxis().CenterTitle()
-            self.plotted_hist_vertex.GetYaxis().SetTitleOffset(0.9)
+         from ROOT import gStyle
+         gStyle.SetOptFit(0)
+         gStyle.SetOptStat(0)
+         self.plotted_hist_momentum.GetXaxis().CenterTitle()
+         self.plotted_hist_momentum.GetYaxis().CenterTitle()
+         self.plotted_hist_vertex.GetXaxis().CenterTitle()
+         self.plotted_hist_vertex.GetYaxis().CenterTitle()
+         self.plotted_hist_vertex.GetYaxis().SetTitleOffset(0.9)
 
-       # Vertex canvas + Fitting
-            self.c_vertex.cd()
-            self.c_vertex.Clear()
-            self.plotted_hist_vertex.Draw("COLZ")
-            if fit:
-                v_fit_name = f"fit2d_{ROOT.gRandom.Integer(100000)}" # This is for debugging purposes, without it the histogram loses its data when clicked on, attempts to call a plot that is no longer stored. Removing it causes issues
-                self.fit_vertex = ROOT.TF2(v_fit_name, "[0]*exp(-0.5*((x/[1])**2 + (y/[2])**2))", -150, 150, -150, 150)
-                self.fit_vertex.SetParameters(1, 50, 50)
-                self.plotted_hist_vertex.Fit(self.fit_vertex, "RS")
-                chi2 = self.fit_vertex.GetChisquare()
-                ndf = self.fit_vertex.GetNDF()
-                reduced_chi2 = chi2 / ndf if ndf > 0 else float('inf')
-                print(f"Reduced χ² = {reduced_chi2:.3f}")
-            self.c_vertex.Update()
 
-        # Momentum canvas + Fitting
-            self.c_momentum.cd()
-            self.c_momentum.Clear()
-            self.plotted_hist_momentum.Draw()
-            if fit:
-                m_fit_name = f"fit1d_{ROOT.gRandom.Integer(100000)}" # Same debugging line
-                self.fit_momentum = ROOT.TF1(m_fit_name, "gaus", 0, 12)
-                self.plotted_hist_momentum.Fit(self.fit_momentum, "RS")
-                chi2 = self.fit_momentum.GetChisquare() #removable
-                ndf = self.fit_momentum.GetNDF() #removable
-                print(f"Reduced χ²/NDF = {chi2 / ndf:.3f}") #removable
-            self.c_momentum.Update()
 
-    # Allows user to view unfitted or fitted plots continuously
+
+         # 6. Vertex canvas + Fitting
+         self.c_vertex.cd()
+         self.c_vertex.Clear() # Clear previous draws on the canvas
+         self.plotted_hist_vertex.Draw("COLZ")
+         self.c_vertex.Update()
+         if fit:
+             v_fit_name = f"fit2d_{ROOT.gRandom.Integer(100000)}" # Unique name for TF2
+             self.fit_vertex = ROOT.TF2(v_fit_name, "[0]*exp(-0.5*((x/[1])**2 + (y/[2])**2))", -150, 150, -150, 150)
+             self.fit_vertex.SetParameters(1, 50, 50)
+             self.plotted_hist_vertex.Fit(self.fit_vertex, "RS")
+             chi2 = self.fit_vertex.GetChisquare()
+             ndf = self.fit_vertex.GetNDF()
+             reduced_chi2 = chi2 / ndf if ndf > 0 else float('inf')
+             print(f"Vertex Fit Reduced χ² = {reduced_chi2:.3f}")
+             self.c_vertex.Update()
+             self.c_vertex.RaiseWindow() # Optional: Uncomment if you want windows to pop to front
+             time.sleep(0.1) # Optional: Uncomment for a brief pause after plot update
+
+         # 7. Momentum canvas + Fitting
+         self.c_momentum.cd()
+         self.c_momentum.Clear() # Clear previous draws on the canvas
+         self.plotted_hist_momentum.Draw()
+         self.c_momentum.Update()
+         if fit:
+             m_fit_name = f"fit1d_{ROOT.gRandom.Integer(100000)}" # Unique name for TF1
+             self.fit_momentum = ROOT.TF1(m_fit_name, "gaus", 0, 12)
+             self.plotted_hist_momentum.Fit(self.fit_momentum, "RS")
+             chi2 = self.fit_momentum.GetChisquare()
+             ndf = self.fit_momentum.GetNDF()
+             print(f"Momentum Fit Reduced χ²/NDF = {chi2 / ndf:.3f}")
+             self.c_momentum.Update()
+             self.c_momentum.RaiseWindow() # Optional: Uncomment if you want windows to pop to front
+             time.sleep(0.1) # Optional: Uncomment for a brief pause after plot update
+
+
+
+
+
+# Allows user to view unfitted or fitted plots continuously
     def interactive_plot(self):
         while True:
             print("\nPlot Options:")
@@ -192,21 +242,37 @@ class PlotManager:
             print("0. Exit")
             choice = input("Enter your choice: ")
 
+            #this loop is to make sure if a plot is X'd out, and a replot is attempted, a plot will be generated
             if choice == "1":
                 self.plot_histograms(fit=False)
             elif choice == "2":
                 self.plot_histograms(fit=True)
             elif choice == "0":
-                print("Exit...")
+                print("Exiting...")
+                if self.plotted_hist_vertex:
+                    self.plotted_hist_vertex.Delete()
+                    self.plotted_hist_vertex = None
+                if self.plotted_hist_momentum:
+                    self.plotted_hist_momentum.Delete()
+                    self.plotted_hist_momentum = None
+                if self.fit_vertex:
+                    self.fit_vertex.Delete()
+                    self.fit_vertex = None
+                if self.fit_momentum:
+                    self.fit_momentum.Delete()
+                    self.fit_momentum = None
+
                 if self.c_vertex:
                     self.c_vertex.Close()
+                    self.c_vertex = None
                 if self.c_momentum:
                     self.c_momentum.Close()
+                    self.c_momentum = None
+
+                ROOT.gSystem.ProcessEvents()
                 break
             else:
-                print("Invalid...")
-
-
+                print("Invalid input. Please enter 0, 1, or 2.")
 
 def main():
     output_file = "flat_particle_ascii.hepmc" # Edit name of output file here
@@ -220,10 +286,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
 
 
 
