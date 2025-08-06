@@ -71,6 +71,20 @@ class EventSimulator:
           )
          f.write(event_str)
 
+    # New write algorithm tested
+    # Particle definition: P <barcode> <status> <PDG ID> <px> <py> <pz> <E> <m> <prod_vertex_barcode>
+    # Vertex definition: V <barcode> <status> [<incoming particles>] <x> <y> <z> <t>
+
+    def write_event_new(self, f, event_id, px, py, pz, E, mass, vx, vy, vz, pdg_id):
+         event_str = (
+             f"E {event_id} 1 2\n"
+             "U GEV MM\n"
+             f"P 1 0 {pdg_id} {px:.6f} {py:.6f} {pz:.6f} {E:.6f} {mass:.6f} 1\n"
+             f"V -1 0 [1] {vx:.3f} {vy:.3f} {vz:.3f} 0.0\n"
+             f"P 2 -1 {pdg_id} {px:.6f} {py:.6f} {pz:.6f} {E:.6f} {mass:.6f} 1\n"
+          )
+         f.write(event_str)
+
     # Writes out events to HepMc file
     def generate_events(self):
         particle = self.get_particle_choice()
@@ -78,13 +92,20 @@ class EventSimulator:
         pdg_id = particle["pdg_id"]
 
         with open(self.output_file, "w") as f:
-            f.write("HepMC::Version 3.0.0\nHepMC::IO_GenEvent-START_EVENT_LISTING\n")
+
+            # Output the HepMC header
+            f.write("HepMC::Version 3.02.02\n")
+            f.write("HepMC::Asciiv3-START_EVENT_LISTING\n")
+
             for event_id in range(self.n_events):
                 px, py, pz, p_mag = self.generate_momentum()
                 vx, vy, vz = self.generate_vertex()
                 E = math.sqrt(p_mag**2 + mass**2)
-                self.write_event(f, event_id, px, py, pz, E, vx, vy, vz, pdg_id)
-            f.write("HepMC::IO_GenEvent-END_EVENT_LISTING\n")
+#                self.write_event(f, event_id, px, py, pz, E, vx, vy, vz, pdg_id)
+                self.write_event_new(f, event_id, px, py, pz, E, mass, vx, vy, vz, pdg_id)
+
+            # Output the HepMC tail
+            f.write("HepMC::Asciiv3-END_EVENT_LISTING\n")
         print(f"Wrote {self.n_events} events to {self.output_file}")
 
 
