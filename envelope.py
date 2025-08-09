@@ -124,30 +124,34 @@ class PlotManager:
         self.fit_momentum = None
         self.load_data()
 
-    # Loads vertex and momentum data by parsing hepmc file
+# Loads vertex and momentum data by parsing hepmc file
     def load_data(self):
         with open(self.input_file, "r") as f:
             for line in f:
-                if line.startswith("F GenVertex"): #reads x/y vertex info from hepmc file, fills vertex graph
-                    parts = line.strip().split()
-                    if len(parts) >= 8:
-                        try:
-                            vx = float(parts[6])
-                            vy = float(parts[7])
-                            self.hist_vertex_raw.Fill(vx, vy)
-                        except ValueError:
-                            pass
-                elif line.startswith("F GenParticle"): #reads particle momentum from hepmc file and calculates the magnitude of the momentum, fills momentum histogram
-                    parts = line.strip().split()
-                    if len(parts) >= 13:
-                        try:
-                            px = float(parts[10])
-                            py = float(parts[11])
-                            pz = float(parts[12])
-                            p_mag = math.sqrt(px**2 + py**2 + pz**2)
-                            self.hist_momentum_raw.Fill(p_mag)
-                        except ValueError:
-                            pass
+                parts = line.strip().split()
+                if not parts:
+                    continue
+                    
+                # Format: V barcode status [incoming] x y z t
+                if parts[0] == 'V' and len(parts) >= 8:
+                    try:
+                        vx = float(parts[4])
+                        vy = float(parts[5])
+                        self.hist_vertex_raw.Fill(vx, vy)
+                    except (ValueError, IndexError):
+                        pass
+
+                # Format: P barcode status pdg_id px py pz E m prod_vtx
+                elif parts[0] == 'P' and len(parts) >= 8:
+                    try:
+                        px = float(parts[4])
+                        py = float(parts[5])
+                        pz = float(parts[6])
+                        p_mag = math.sqrt(px**2 + py**2 + pz**2)
+                        self.hist_momentum_raw.Fill(p_mag)
+                    except (ValueError, IndexError):
+                        pass
+
 
     def create_canvases(self, vertex_canvas_name, momentum_canvas_name):
         if self.c_vertex:
