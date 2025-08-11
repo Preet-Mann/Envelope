@@ -18,19 +18,27 @@ class EventSimulator:
             "1": {"name": "pion", "pdg_id": 211, "mass": 0.13957039},
             "2": {"name": "kaon", "pdg_id": 321, "mass": 0.493677},
             "3": {"name": "proton", "pdg_id": 2212, "mass": 0.93827208816},
+            "5": {"name": "Deuteron", "pdg_id": 1000010020, "mass": 1.87561294257},
+            "6": {"name": "Alpha Particle", "pdg_id": 1000020040, "mass": 3.7273794066},
+
+
         }
 
     # Prompt User for Particle Species
-    # Additional particle prompts can be added here
     def get_particle_choice(self):
         while True:
             print("\nOptions:")
             print("1. Pion")
             print("2. Kaon")
             print("3. Proton")
+            print("4. Mixed Generation")
+            print("5. Deuteron (D2 nucleus)")
+            print("6. Alpha (He4 nucleus)")
             choice = input("Enter your choice: ")
             if choice in self.PARTICLE_DATA:
                 return self.PARTICLE_DATA[choice]
+            if choice == "4":
+                return "mixed"
             print("Invalid input. Please enter 1, 2, or 3.")
 
     # Randomly Generates x,y,z momentum in a given range
@@ -85,28 +93,59 @@ class EventSimulator:
           )
          f.write(event_str)
 
-    # Writes out events to HepMc file
     def generate_events(self):
-        particle = self.get_particle_choice()
-        mass = particle["mass"]
-        pdg_id = particle["pdg_id"]
+         choice_result = self.get_particle_choice()
 
-        with open(self.output_file, "w") as f:
+         with open(self.output_file, "w") as f:
+             # Output the HepMC header
+             f.write("HepMC::Version 3.02.02\n")
+             f.write("HepMC::Asciiv3-START_EVENT_LISTING\n")
 
-            # Output the HepMC header
-            f.write("HepMC::Version 3.02.02\n")
-            f.write("HepMC::Asciiv3-START_EVENT_LISTING\n")
+             if choice_result != "mixed":
+                 particle = choice_result
+                 mass = particle["mass"]
+                 pdg_id = particle["pdg_id"]
+                 for event_id in range(self.n_events):
+                     px, py, pz, p_mag = self.generate_momentum()
+                     vx, vy, vz = self.generate_vertex()
+                     E = math.sqrt(p_mag**2 + mass**2)
+                     self.write_event_new(f, event_id, px, py, pz, E, mass, vx, vy, vz, pdg_id)
 
-            for event_id in range(self.n_events):
-                px, py, pz, p_mag = self.generate_momentum()
-                vx, vy, vz = self.generate_vertex()
-                E = math.sqrt(p_mag**2 + mass**2)
-#                self.write_event(f, event_id, px, py, pz, E, vx, vy, vz, pdg_id)
-                self.write_event_new(f, event_id, px, py, pz, E, mass, vx, vy, vz, pdg_id)
-
+            #Mixed generation was chosen
+             else:
+                # Define particles for the mix
+                 proton = self.PARTICLE_DATA["3"]
+                 pion = self.PARTICLE_DATA["1"]
+                 kaon = self.PARTICLE_DATA["2"]
+ 
+                # Define cumulative probabilities for the 5:3:1 ratio
+                # Total parts = 5 + 3 + 1 = 9
+                 prob_proton = 5.0 / 9.0
+                 prob_pion_cumulative = prob_proton + (3.0 / 9.0) # Proton + Pion
+ 
+                 for event_id in range(self.n_events):
+                     # For each event, randomly select a particle based on the ratio
+                     rand_val = self.rng.Uniform(0, 1)
+ 
+                     if rand_val < prob_proton:
+                         particle = proton
+                     elif rand_val < prob_pion_cumulative:
+                         particle = pion
+                     else:
+                         particle = kaon
+ 
+                     mass = particle["mass"]
+                     pdg_id = particle["pdg_id"]
+ 
+                     px, py, pz, p_mag = self.generate_momentum()
+                     vx, vy, vz = self.generate_vertex()
+                     E = math.sqrt(p_mag**2 + mass**2)
+                     self.write_event_new(f, event_id, px, py, pz, E, mass, vx, vy, vz, pdg_id)
+ 
             # Output the HepMC tail
-            f.write("HepMC::Asciiv3-END_EVENT_LISTING\n")
-        print(f"Wrote {self.n_events} events to {self.output_file}")
+             f.write("HepMC::Asciiv3-END_EVENT_LISTING\n")
+         print(f"Wrote {self.n_events} events to {self.output_file}")
+ 
 
 
 
@@ -311,6 +350,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
 
 
 
